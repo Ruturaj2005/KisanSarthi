@@ -1,0 +1,141 @@
+@import "tailwindcss";
+
+@theme {
+  /* ── Colors ───────────────────────────────────────────── */
+  --color-forest: #2D6A4F;
+  --color-forest-light: #40916C;
+  --color-forest-dark: #1B4332;
+  --color-leaf: #52B788;
+  --color-leaf-light: #74C69D;
+  --color-amber: #F4A261;
+  --color-amber-dark: #E76F51;
+  --color-soil: #8B5E3C;
+  --color-soil-light: #A67C5B;
+  --color-cream: #F8FAF9;
+  --color-ink: #1B1F1E;
+  --color-danger: #E63946;
+  --color-caution: #FFB703;
+  --color-white: #ffffff;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+
+  /* ── Fonts ────────────────────────────────────────────── */
+  --font-heading: 'Noto Sans', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* ── Border Radius ────────────────────────────────────── */
+  --radius-card: 1rem;
+  --radius-chip: 9999px;
+
+  /* ── Box Shadow ───────────────────────────────────────── */
+  --shadow-card: 0 4px 20px rgba(45, 106, 79, 0.10);
+  --shadow-elevated: 0 8px 30px rgba(45, 106, 79, 0.15);
+  --shadow-glow: 0 0 20px rgba(82, 183, 136, 0.3);
+
+  /* ── Animations ───────────────────────────────────────── */
+  --animate-fade-in: fade-in 0.5s ease-out;
+  --animate-slide-up: slide-up 0.4s ease-out;
+  --animate-pulse-slow: pulse-slow 2s ease-in-out infinite;
+  --animate-bounce-gentle: bounce-gentle 1s ease-in-out infinite;
+  --animate-spin-slow: spin 3s linear infinite;
+  --animate-waveform: waveform 1.2s ease-in-out infinite;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes bounce-gentle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes waveform {
+  0% { transform: scaleY(1); }
+  25% { transform: scaleY(1.5); }
+  50% { transform: scaleY(0.7); }
+  75% { transform: scaleY(1.3); }
+  100% { transform: scaleY(1); }
+}
+
+/* ── Base Styles ──────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--color-ink);
+  background: var(--color-cream);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+}
+
+/* ── Scrollbar ────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-leaf);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-forest);
+}
+
+/* ── Gauge Animation ─────────────────────────────────────── */
+.gauge-arc {
+  transition: stroke-dashoffset 1.2s ease-out;
+}
+
+/* ── Chat Bubble ─────────────────────────────────────────── */
+.chat-bubble-user {
+  background: linear-gradient(135deg, var(--color-forest), var(--color-forest-light));
+  color: white;
+  border-radius: 1rem 1rem 0.25rem 1rem;
+}
+
+.chat-bubble-ai {
+  background: white;
+  color: var(--color-ink);
+  border-radius: 1rem 1rem 1rem 0.25rem;
+  border: 1px solid var(--color-gray-200);
+}

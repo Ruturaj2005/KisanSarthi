@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # MongoDB
+  mongodb:
+    image: mongo:7
+    container_name: kisansaathi-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=kisansaathi
+
+  # Backend API
+  backend:
+    build: ./backend
+    container_name: kisansaathi-api
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongodb
+    environment:
+      - NODE_ENV=development
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongodb:27017/kisansaathi
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  # Frontend
+  frontend:
+    build: ./frontend
+    container_name: kisansaathi-web
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:5000/api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+
+  # ML Service
+  ml-service:
+    build: ./ml-service
+    container_name: kisansaathi-ml
+    ports:
+      - "8000:8000"
+
+volumes:
+  mongo_data:
