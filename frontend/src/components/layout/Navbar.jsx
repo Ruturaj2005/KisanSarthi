@@ -4,13 +4,28 @@ import { usePathname } from 'next/navigation';
 import useAuthStore from '../../store/authStore';
 import { getTranslation, LANGUAGES } from '../../lib/i18n';
 import { useState } from 'react';
+import api from '../../lib/api';
+import toast from 'react-hot-toast';
 
 export default function Navbar() {
-  const { farmer, isAuthenticated, logout } = useAuthStore();
+  const { farmer, isAuthenticated, logout, setFarmer } = useAuthStore();
   const pathname = usePathname();
   const [langOpen, setLangOpen] = useState(false);
   const lang = farmer?.preferredLang || 'en';
   const t = getTranslation(lang);
+
+  const handleLanguageChange = async (newLang) => {
+    setLangOpen(false);
+    if (newLang === lang) return;
+
+    try {
+      const { data } = await api.put('/farmer/profile', { preferredLang: newLang });
+      setFarmer(data.data.farmer, localStorage.getItem('accessToken'));
+      toast.success(getTranslation(newLang).profile.save || 'Language updated! 🌾');
+    } catch (err) {
+      toast.error('Failed to update language');
+    }
+  };
 
   if (!isAuthenticated) return null;
 
@@ -68,7 +83,7 @@ export default function Navbar() {
                 {LANGUAGES.map((l) => (
                   <button
                     key={l.code}
-                    onClick={() => { setLangOpen(false); }}
+                      onClick={() => handleLanguageChange(l.code)}
                     className={`w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 flex items-center gap-2
                       ${l.code === lang ? 'text-forest font-semibold bg-forest/5' : 'text-gray-700'}`}
                   >

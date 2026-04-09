@@ -40,7 +40,7 @@ export default function RootLayout({ children }) {
       </head>
       <body className="min-h-screen bg-cream" suppressHydrationWarning>
         <QueryClientProvider client={queryClient}>
-          {mounted && (
+          {mounted ? (
             <>
               <Navbar />
               <main className="pb-20 md:pb-0">
@@ -48,7 +48,7 @@ export default function RootLayout({ children }) {
               </main>
               <BottomNav />
             </>
-          )}
+          ) : null}
           <Toaster
             position="top-center"
             toastOptions={{

@@ -9,7 +9,13 @@ import toast from 'react-hot-toast';
 
 export default function ChatPage() {
   const { farmer } = useAuthStore();
-  const lang = farmer?.preferredLang || 'en';
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const lang = mounted && farmer?.preferredLang ? farmer.preferredLang : 'en';
   const t = getTranslation(lang);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
