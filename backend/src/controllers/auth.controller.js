@@ -11,6 +11,13 @@ const COOKIE_OPTIONS = {
   path: '/',
 };
 
+const CLEAR_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: env.NODE_ENV === 'production',
+  sameSite: 'strict',
+  path: '/',
+};
+
 const register = async (req, res, next) => {
   try {
     const result = await authService.register(req.body);
@@ -71,7 +78,7 @@ const refresh = async (req, res, next) => {
     return ok(res, result, 'Token refreshed');
   } catch (error) {
     if (error.code) {
-      res.clearCookie('refreshToken', COOKIE_OPTIONS);
+      res.clearCookie('refreshToken', CLEAR_COOKIE_OPTIONS);
       return err(res, getFarmerMessage(error.code, 'en'), error.code, error.status);
     }
     next(error);
@@ -81,7 +88,7 @@ const refresh = async (req, res, next) => {
 const logout = async (req, res, next) => {
   try {
     await authService.logout(req.farmer._id);
-    res.clearCookie('refreshToken', COOKIE_OPTIONS);
+    res.clearCookie('refreshToken', CLEAR_COOKIE_OPTIONS);
     return ok(res, null, 'Logged out');
   } catch (error) {
     next(error);

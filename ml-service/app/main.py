@@ -5,10 +5,22 @@ import numpy as np
 from PIL import Image
 import io
 import os
+import json
 
 # ── Model Loading ───────────────────────────────────────────────────
 model_session = None
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "model", "plant_disease.onnx")
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "model", "efficientnet_b0_kisansarthi.onnx")
+CLASS_MAPPING_PATH = os.path.join(os.path.dirname(__file__), "model", "class_mapping.json")
+
+# Load class mapping
+LABELS = []
+try:
+    with open(CLASS_MAPPING_PATH, 'r') as f:
+        class_mapping = json.load(f)
+        LABELS = [class_mapping[str(i)] for i in range(len(class_mapping))]
+    print(f"✅ Loaded {len(LABELS)} classes from class_mapping.json")
+except Exception as e:
+    print(f"⚠️  Failed to load class mapping: {e}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -36,23 +48,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# ── PlantVillage Labels ────────────────────────────────────────────
-LABELS = [
-    "Apple___Apple_scab", "Apple___Black_rot", "Apple___Cedar_apple_rust", "Apple___healthy",
-    "Blueberry___healthy", "Cherry___Powdery_mildew", "Cherry___healthy",
-    "Corn___Cercospora_leaf_spot", "Corn___Common_rust", "Corn___Northern_Leaf_Blight", "Corn___healthy",
-    "Grape___Black_rot", "Grape___Esca", "Grape___Leaf_blight", "Grape___healthy",
-    "Orange___Haunglongbing", "Peach___Bacterial_spot", "Peach___healthy",
-    "Pepper___Bacterial_spot", "Pepper___healthy",
-    "Potato___Early_blight", "Potato___Late_blight", "Potato___healthy",
-    "Raspberry___healthy", "Soybean___healthy",
-    "Squash___Powdery_mildew", "Strawberry___Leaf_scorch", "Strawberry___healthy",
-    "Tomato___Bacterial_spot", "Tomato___Early_blight", "Tomato___Late_blight",
-    "Tomato___Leaf_Mold", "Tomato___Septoria_leaf_spot",
-    "Tomato___Spider_mites", "Tomato___Target_Spot",
-    "Tomato___Tomato_Yellow_Leaf_Curl_Virus", "Tomato___Tomato_mosaic_virus", "Tomato___healthy",
-]
 
 # ── ImageNet normalization ──────────────────────────────────────────
 IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)

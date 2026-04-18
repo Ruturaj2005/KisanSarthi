@@ -50,23 +50,52 @@ const sendOtpEmail = async (to, otp, name = 'Farmer') => {
   </body>
   </html>`;
 
-  try {
-    await transporter.sendMail({
-      from: `KisanSaathi <${env.EMAIL_USER}>`,
-      to,
-      subject: `आपका KisanSaathi OTP: ${otp} | Your OTP: ${otp}`,
-      html,
-    });
-    logger.info('OTP email sent', { service: 'mailer', meta: { to } });
-  } catch (error) {
-    logger.error('Failed to send OTP email', {
-      service: 'mailer',
-      meta: { to, error: error.message },
-    });
-    // Don't throw — email failure shouldn't break registration flow in dev
-    if (env.NODE_ENV === 'production') {
-      throw error;
+  const maxRetries = 2;
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await transporter.sendMail({
+        from: `KisanSaathi <${env.EMAIL_USER}>`,
+        to,
+        subject: `आपका KisanSaathi OTP: ${otp} | Your OTP: ${otp}`,
+        html,
+      });
+      logger.info('✅ OTP email sent successfully', { service: 'mailer', meta: { to, attempt } });
+      return;
+    } catch (error) {
+      lastError = error;
+      logger.warn(`⚠️  Email send attempt ${attempt}/${maxRetries} failed`, {
+        service: 'mailer',
+        meta: { 
+          to, 
+          error: error.message,
+          code: error.code,
+        },
+      });
+      
+      // Wait before retry (100ms, 200ms)
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, attempt * 100));
+      }
     }
+  }
+
+  // All retries failed
+  logger.error('❌ Failed to send OTP email after retries', {
+    service: 'mailer',
+    meta: { 
+      to, 
+      error: lastError.message,
+      code: lastError.code,
+      suggestion: 'Check Gmail credentials or network connectivity. OTP logged in backend console.'
+    },
+  });
+  
+  if (env.NODE_ENV === 'production') {
+    throw lastError;
+  } else {
+    logger.warn(`[DEV] Email failed, but continuing (OTP in logs: ${otp})`, { service: 'mailer' });
   }
 };
 
