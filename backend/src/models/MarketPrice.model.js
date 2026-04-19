@@ -37,7 +37,6 @@ const marketPriceSchema = new mongoose.Schema(
     date: {
       type: Date,
       required: true,
-      index: true,
     },
     source: {
       type: String,

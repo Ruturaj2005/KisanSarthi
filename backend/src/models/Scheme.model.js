@@ -58,7 +58,6 @@ const schemeSchema = new mongoose.Schema(
   }
 );
 
-schemeSchema.index({ externalId: 1 });
 schemeSchema.index({ portal: 1, state: 1 });
 schemeSchema.index({ createdAt: -1 });
 

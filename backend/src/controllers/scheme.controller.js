@@ -2,6 +2,7 @@ const { Scheme, SchemeNotification, Farmer } = require('../models');
 const { ok, err } = require('../utils/apiResponse');
 const logger = require('../utils/logger');
 const { broadcastScheme: broadcastViaWhatsApp } = require('../services/whatsapp.service');
+const { syncPortalSchemesAndNotifyLoggedInFarmers } = require('../services/scheme.service');
 
 /**
  * Get all schemes for a farmer
@@ -94,11 +95,11 @@ const getNotificationHistory = async (req, res, next) => {
  */
 const syncSchemes = async (req, res, next) => {
   try {
-    // TODO: Implement actual scraper when Aapla Sarkar API is available
-    // For now, this is a placeholder
     logger.info('🔄 Manual scheme sync triggered', { service: 'scheme' });
 
-    return ok(res, { message: 'Sync initiated. New schemes will be fetched from Aapla Sarkar.' });
+    const result = await syncPortalSchemesAndNotifyLoggedInFarmers();
+
+    return ok(res, { result }, 'Sync complete');
   } catch (error) {
     next(error);
   }

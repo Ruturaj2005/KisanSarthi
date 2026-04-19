@@ -12,9 +12,6 @@ const env = require('./src/config/env');
       user: env.EMAIL_USER,
       pass: env.EMAIL_PASSWORD,
     },
-    tls: {
-      rejectUnauthorized: false,
-    },
   });
 
   try {
@@ -28,21 +25,19 @@ const env = require('./src/config/env');
       to: env.EMAIL_USER,
       subject: 'KisanSaathi Email Test - OTP: 123456',
       html: `
-        <div style="max-width:480px;margin:20px auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(45,106,79,0.1);">
-          <div style="background:linear-gradient(135deg,#1B4332,#2D6A4F);padding:24px;text-align:center;">
-            <h1 style="color:#ffffff;margin:0;font-size:24px;">🌾 KisanSaathi</h1>
-            <p style="color:#74C69D;margin:4px 0 0;font-size:14px;">Email Test</p>
+        <div style="max-width:480px;margin:20px auto;background:#ffffff;border-radius:12px;">
+          <div style="background:#1B4332;padding:24px;text-align:center;color:#fff;">
+            <h1>🌾 KisanSaathi - Email Test</h1>
           </div>
           <div style="padding:32px 24px;text-align:center;">
-            <p style="color:#1B1F1E;font-size:16px;">✅ If you see this, email is working!</p>
-            <p style="font-size:24px;color:#F4A261;font-weight:bold;">123456</p>
-            <p style="color:#888;font-size:13px;">Test OTP Code</p>
+            <p>If you see this, email is working! ✅</p>
+            <p style="font-size:24px;color:#F4A261;">123456</p>
           </div>
         </div>
       `,
     });
     console.log('✅ Email sent successfully!');
-    console.log('\n📬 Check your Gmail inbox for the test email');
+    console.log('Response:', result.response);
   } catch (error) {
     console.error('\n❌ ERROR:', error.message);
     console.error('Code:', error.code);
@@ -50,7 +45,6 @@ const env = require('./src/config/env');
     console.error('1. Make sure EMAIL_PASSWORD is the 16-char App Password (with spaces)');
     console.error('2. Verify 2-Step Verification is enabled on Gmail account');
     console.error('3. Check EMAIL_USER is correct Gmail address');
-    console.error('4. Restart backend after changing .env');
     process.exit(1);
   }
 })();

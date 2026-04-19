@@ -2,6 +2,8 @@ const authService = require('../services/auth.service');
 const { ok, err } = require('../utils/apiResponse');
 const { getFarmerMessage } = require('../utils/farmerMessages');
 const env = require('../config/env');
+const logger = require('../utils/logger');
+const { notifySingleLoggedInFarmerForAllSchemes } = require('../services/scheme.service');
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
@@ -34,6 +36,15 @@ const verifyOtp = async (req, res, next) => {
   try {
     const result = await authService.verifyOtp(req.body);
     res.cookie('refreshToken', result.refreshToken, COOKIE_OPTIONS);
+
+    notifySingleLoggedInFarmerForAllSchemes(result.farmer._id)
+      .catch((notifyError) => {
+        logger.error('Failed to trigger scheme WhatsApp notifications after OTP verify', {
+          service: 'auth',
+          meta: { farmerId: result.farmer._id, error: notifyError.message },
+        });
+      });
+
     return ok(res, {
       accessToken: result.accessToken,
       farmer: result.farmer,
@@ -50,6 +61,15 @@ const login = async (req, res, next) => {
   try {
     const result = await authService.login(req.body);
     res.cookie('refreshToken', result.refreshToken, COOKIE_OPTIONS);
+
+    notifySingleLoggedInFarmerForAllSchemes(result.farmer._id)
+      .catch((notifyError) => {
+        logger.error('Failed to trigger scheme WhatsApp notifications after login', {
+          service: 'auth',
+          meta: { farmerId: result.farmer._id, error: notifyError.message },
+        });
+      });
+
     return ok(res, {
       accessToken: result.accessToken,
       farmer: result.farmer,
@@ -78,7 +98,7 @@ const refresh = async (req, res, next) => {
     return ok(res, result, 'Token refreshed');
   } catch (error) {
     if (error.code) {
-      res.clearCookie('refreshToken', CLEAR_COOKIE_OPTIONS);
+      res.clearCookie('refreshToken', COOKIE_OPTIONS);
       return err(res, getFarmerMessage(error.code, 'en'), error.code, error.status);
     }
     next(error);
@@ -88,7 +108,7 @@ const refresh = async (req, res, next) => {
 const logout = async (req, res, next) => {
   try {
     await authService.logout(req.farmer._id);
-    res.clearCookie('refreshToken', CLEAR_COOKIE_OPTIONS);
+    res.clearCookie('refreshToken', COOKIE_OPTIONS);
     return ok(res, null, 'Logged out');
   } catch (error) {
     next(error);

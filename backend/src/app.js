@@ -14,6 +14,7 @@ const soilRoutes = require('./routes/soil.routes');
 const weatherRoutes = require('./routes/weather.routes');
 const marketRoutes = require('./routes/market.routes');
 const adminRoutes = require('./routes/admin.routes');
+const schemeRoutes = require('./routes/scheme.routes');
 
 const app = express();
 
@@ -61,6 +62,7 @@ app.use('/api/soil', soilRoutes);
 app.use('/api/weather', weatherRoutes);
 app.use('/api/market', marketRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/scheme', schemeRoutes);
 
 // ── 404 Handler ────────────────────────────────────────────────────
 app.use((req, res) => {

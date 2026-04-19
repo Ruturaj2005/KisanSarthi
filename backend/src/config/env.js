@@ -32,6 +32,11 @@ const envSchema = z.object({
 
   ML_SERVICE_URL: z.string().url().default('http://localhost:8000'),
   IDEMPOTENCY_TTL_MS: z.coerce.number().default(30000),
+
+  TWILIO_ACCOUNT_SID: z.string().default(''),
+  TWILIO_AUTH_TOKEN: z.string().default(''),
+  TWILIO_PHONE: z.string().default('+14155238886'),
+  WHATSAPP_ENABLED: z.coerce.boolean().default(false),
 });
 
 let env;

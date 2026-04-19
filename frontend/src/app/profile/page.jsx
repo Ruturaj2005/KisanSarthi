@@ -5,6 +5,7 @@ import useAuthStore from '../../store/authStore';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import Badge from '../../components/ui/Badge';
 import { getTranslation, LANGUAGES } from '../../lib/i18n';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
@@ -21,6 +22,10 @@ export default function ProfilePage() {
   const [irrigationSrc, setIrrigationSrc] = useState(farmer?.irrigationSrc || '');
   const [selectedCrops, setSelectedCrops] = useState(farmer?.primaryCrops || []);
   const [preferredLang, setPreferredLang] = useState(farmer?.preferredLang || 'hi');
+  const [whatsappNumber, setWhatsappNumber] = useState(farmer?.whatsappNumber || '');
+  const [notificationsEnabled, setNotificationsEnabled] = useState(
+    farmer?.notificationsEnabled ?? true
+  );
   const [loading, setLoading] = useState(false);
 
   const crops = ['Rice', 'Wheat', 'Maize', 'Cotton', 'Soybean', 'Tomato', 'Onion', 'Potato', 'Mustard', 'Chickpea', 'Groundnut', 'Sugarcane', 'Bajra', 'Jowar'];
@@ -30,7 +35,12 @@ export default function ProfilePage() {
     try {
       const { data } = await api.put('/farmer/profile', {
         name, landSize: landSize ? parseFloat(landSize) : undefined,
-        soilType, irrigationSrc, primaryCrops: selectedCrops, preferredLang,
+        soilType,
+        irrigationSrc,
+        primaryCrops: selectedCrops,
+        preferredLang,
+        whatsappNumber: whatsappNumber.trim() || null,
+        notificationsEnabled,
       });
       setFarmer(data.data.farmer, localStorage.getItem('accessToken'));
       toast.success('Profile saved! ✅');
@@ -112,6 +122,25 @@ export default function ProfilePage() {
               </button>
             ))}
           </div>
+        </Card>
+
+        <Card>
+          <Input
+            label="WhatsApp Number (10 digits)"
+            value={whatsappNumber}
+            onChange={(e) => setWhatsappNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+            placeholder="9876543210"
+            inputMode="numeric"
+          />
+          <label className="mt-3 flex items-center gap-3 text-sm text-gray-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={notificationsEnabled}
+              onChange={(e) => setNotificationsEnabled(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-forest focus:ring-forest"
+            />
+            Enable WhatsApp scheme notifications
+          </label>
         </Card>
 
         <Card>
