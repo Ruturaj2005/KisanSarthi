@@ -1,13 +1,13 @@
-// Using Ollama as the backend LLM natively
-const ollama = require('ollama').default || require('ollama');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { z } = require('zod');
 const env = require('../config/env');
 const logger = require('../utils/logger');
 
-// We are overriding 'model' availability to true so operations proceed
-const isModelAvailable = true;
+// ── Initialize Gemini Client ───────────────────────────────────────
+const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: env.GEMINI_MODEL || 'gemini-2.5-flash' });
 
-const OLLAMA_MODEL = 'kimi-k2-thinking:cloud';
+const isModelAvailable = !!env.GEMINI_API_KEY;
 
 // ── Zod Schemas for Response Validation ────────────────────────────
 const parseConfidence = z.preprocess((val) => {
@@ -196,15 +196,18 @@ function parseGeminiJSON(raw, schema) {
       stripped = raw.substring(start, end + 1);
     }
   }
-  
+
   try {
     const parsed = JSON.parse(stripped);
     try {
       return schema.parse(parsed);
     } catch (zodError) {
-      console.error('Zod Schema Validation Error:', zodError.errors);
-      console.log('Parsed Object:', parsed);
-      throw zodError;
+      logger.warn('Zod validation failed, returning raw parsed', {
+        service: 'gemini',
+        meta: { errors: zodError.errors },
+      });
+      // Return what we can even if schema validation partially fails
+      return schema.parse({ ...parsed });
     }
   } catch (error) {
     logger.error('Failed to parse Gemini response', {
@@ -215,14 +218,68 @@ function parseGeminiJSON(raw, schema) {
   }
 }
 
+// ── Custom Error Classes ───────────────────────────────────────────
+class GeminiRateLimitError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'GeminiRateLimitError';
+    this.statusCode = 429;
+  }
+}
+
+class GeminiApiError extends Error {
+  constructor(message, statusCode = 500) {
+    super(message);
+    this.name = 'GeminiApiError';
+    this.statusCode = statusCode;
+  }
+}
+
+// ── Call Gemini API with Retry ─────────────────────────────────────
+async function callGemini(prompt, maxRetries = 3) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      return response.text();
+    } catch (error) {
+      lastError = error;
+      const is429 = error.message?.includes('429') || error.message?.includes('Too Many Requests') || error.message?.includes('quota');
+
+      logger.warn(`Gemini API attempt ${attempt}/${maxRetries} failed`, {
+        service: 'gemini',
+        meta: { error: error.message?.substring(0, 200), is429, attempt },
+      });
+
+      if (is429 && attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+        logger.info(`Retrying in ${delay}ms...`, { service: 'gemini' });
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        continue;
+      }
+
+      if (is429) {
+        throw new GeminiRateLimitError(
+          'AI service is temporarily busy due to high demand. Please try again in a minute.'
+        );
+      }
+
+      throw new GeminiApiError(
+        error.message?.includes('API key') ? 'AI service configuration error. Please contact support.' : 'AI service encountered an error. Please try again.',
+        error.status || 500
+      );
+    }
+  }
+
+  throw lastError;
+}
+
 // ── Main API Functions ─────────────────────────────────────────────
 
 /**
  * Get crop advisory from Gemini.
- * @param {object} context - Farmer context
- * @param {string} query - Farmer's question
- * @param {string} lang - Target language
- * @returns {Promise<object>} Parsed advisory response
  */
 const getCropAdvisory = async (context, query, lang = 'hi') => {
   if (!isModelAvailable) {
@@ -237,16 +294,8 @@ const getCropAdvisory = async (context, query, lang = 'hi') => {
   }
 
   const prompt = buildAdvisoryPrompt(context, query, lang);
-  try {
-    const response = await ollama.chat({
-      model: OLLAMA_MODEL,
-      messages: [{ role: 'user', content: prompt }],
-    });
-    return parseGeminiJSON(response.message.content, advisorySchema);
-  } catch (error) {
-    logger.error('Ollama Chat Error', { error: error.message });
-    throw error;
-  }
+  const raw = await callGemini(prompt);
+  return parseGeminiJSON(raw, advisorySchema);
 };
 
 const getSoilExplanation = async (soilData, lang = 'hi') => {
@@ -254,11 +303,8 @@ const getSoilExplanation = async (soilData, lang = 'hi') => {
     return { explanation: 'AI unavailable', recommendations: [], rotationTip: '', confidence: 0 };
   }
   const prompt = buildSoilExplainPrompt(soilData, lang);
-  const response = await ollama.chat({
-    model: OLLAMA_MODEL,
-    messages: [{ role: 'user', content: prompt }],
-  });
-  return parseGeminiJSON(response.message.content, soilSchema);
+  const raw = await callGemini(prompt);
+  return parseGeminiJSON(raw, soilSchema);
 };
 
 const verifyPestDetection = async (labels, cropType, lang = 'hi') => {
@@ -266,11 +312,8 @@ const verifyPestDetection = async (labels, cropType, lang = 'hi') => {
     return { disease: labels[0]?.label || 'Unknown', confidence: 0, severity: 'low', treatment: [], organic: [], chemical: [], warnings: ['AI verification unavailable'] };
   }
   const prompt = buildPestVerifyPrompt(labels, cropType, lang);
-  const response = await ollama.chat({
-    model: OLLAMA_MODEL,
-    messages: [{ role: 'user', content: prompt }],
-  });
-  return parseGeminiJSON(response.message.content, pestSchema);
+  const raw = await callGemini(prompt);
+  return parseGeminiJSON(raw, pestSchema);
 };
 
 const getWeatherAdvisory = async (weather, crop, lang = 'hi') => {
@@ -278,11 +321,8 @@ const getWeatherAdvisory = async (weather, crop, lang = 'hi') => {
     return { advice: 'Weather advisory unavailable', steps: [], urgency: 'low', confidence: 0, sources: [], warnings: [] };
   }
   const prompt = buildWeatherAdvisoryPrompt(weather, crop, lang);
-  const response = await ollama.chat({
-    model: OLLAMA_MODEL,
-    messages: [{ role: 'user', content: prompt }],
-  });
-  return parseGeminiJSON(response.message.content, advisorySchema);
+  const raw = await callGemini(prompt);
+  return parseGeminiJSON(raw, advisorySchema);
 };
 
 const getFertilizerAdvice = async (soilData, crop, lang = 'hi') => {
@@ -290,11 +330,8 @@ const getFertilizerAdvice = async (soilData, crop, lang = 'hi') => {
     return { advice: 'Fertilizer advice unavailable', steps: [], urgency: 'medium', confidence: 0, sources: [], warnings: [] };
   }
   const prompt = buildFertilizerPrompt(soilData, crop, lang);
-  const response = await ollama.chat({
-    model: OLLAMA_MODEL,
-    messages: [{ role: 'user', content: prompt }],
-  });
-  return parseGeminiJSON(response.message.content, advisorySchema);
+  const raw = await callGemini(prompt);
+  return parseGeminiJSON(raw, advisorySchema);
 };
 
 module.exports = {

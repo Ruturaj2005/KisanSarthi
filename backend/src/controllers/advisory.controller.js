@@ -22,9 +22,13 @@ const chat = async (req, res, next) => {
 
     // Try to get current weather for richer context
     if (farmer.location?.lat && farmer.location?.lng) {
-      const weather = await weatherService.getCurrentWeather(farmer.location.lat, farmer.location.lng);
-      if (weather) {
-        context.weather = weather;
+      try {
+        const weather = await weatherService.getCurrentWeather(farmer.location.lat, farmer.location.lng);
+        if (weather) {
+          context.weather = weather;
+        }
+      } catch (weatherErr) {
+        // Non-critical — continue with default weather
       }
     }
 
@@ -56,6 +60,13 @@ const chat = async (req, res, next) => {
       },
     });
   } catch (error) {
+    // Return user-friendly errors for known AI issues
+    if (error.name === 'GeminiRateLimitError') {
+      return err(res, error.message, 'RATE_LIMITED', 429);
+    }
+    if (error.name === 'GeminiApiError') {
+      return err(res, error.message, 'AI_ERROR', error.statusCode || 500);
+    }
     next(error);
   }
 };

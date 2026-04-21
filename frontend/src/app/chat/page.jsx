@@ -89,9 +89,12 @@ export default function ChatPage() {
       };
       setMessages((prev) => [...prev, aiMsg]);
     } catch (err) {
-      toast.error('Failed to get response');
+      const serverMsg = err.response?.data?.error;
+      const isRateLimit = err.response?.status === 429;
+      const displayMsg = serverMsg || 'Sorry, I could not process your request. Please try again.';
+      toast.error(isRateLimit ? '⏳ AI is busy — please wait a minute and retry' : 'Failed to get response');
       setMessages((prev) => [...prev, {
-        role: 'ai', content: 'Sorry, I could not process your request. Please try again.',
+        role: 'ai', content: displayMsg,
         timestamp: new Date(),
       }]);
     } finally {
