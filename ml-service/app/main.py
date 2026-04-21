@@ -8,7 +8,7 @@ import os
 
 # ── Model Loading ───────────────────────────────────────────────────
 model_session = None
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "model", "plant_disease.onnx")
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "model", "efficientnet_b0_kisansarthi.onnx")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

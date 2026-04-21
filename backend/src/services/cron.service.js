@@ -1,6 +1,7 @@
 const cron = require('node-cron');
 const marketService = require('./market.service');
 const logger = require('../utils/logger');
+const { syncPortalSchemesAndNotifyLoggedInFarmers } = require('./scheme.service');
 
 /**
  * Generate simulated market data for development.
@@ -71,6 +72,29 @@ function startCronJobs() {
       logger.info(`Market sync complete: ${upserted} records`, { service: 'cron' });
     } catch (error) {
       logger.error('Market sync failed', { service: 'cron', meta: { error: error.message } });
+    }
+  }, {
+    timezone: 'Asia/Kolkata',
+  });
+
+  // Government scheme sync — every 2 hours
+  cron.schedule('0 */2 * * *', async () => {
+    logger.info('Starting Aaple Sarkar scheme sync', { service: 'cron' });
+    try {
+      const result = await syncPortalSchemesAndNotifyLoggedInFarmers();
+      logger.info('Scheme sync complete', {
+        service: 'cron',
+        meta: {
+          fetched: result.sync.fetched,
+          inserted: result.sync.inserted,
+          updated: result.sync.updated,
+          notifiedFarmers: result.notifications.farmers,
+          sent: result.notifications.sent,
+          failed: result.notifications.failed,
+        },
+      });
+    } catch (error) {
+      logger.error('Scheme sync failed', { service: 'cron', meta: { error: error.message } });
     }
   }, {
     timezone: 'Asia/Kolkata',

@@ -5,6 +5,7 @@ const { verifyToken } = require('../middleware/auth.middleware');
 
 router.post('/test', verifyToken, soilController.createSoilTest);
 router.get('/tests', verifyToken, soilController.getSoilTests);
+router.get('/history', verifyToken, soilController.getTestHistory);
 router.get('/recommendation', verifyToken, soilController.getSoilRecommendation);
 
 module.exports = router;

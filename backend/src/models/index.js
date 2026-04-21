@@ -8,6 +8,8 @@ const PriceAlert = require('./PriceAlert.model');
 const WeatherAlert = require('./WeatherAlert.model');
 const Feedback = require('./Feedback.model');
 const UsageEvent = require('./UsageEvent.model');
+const Scheme = require('./Scheme.model');
+const SchemeNotification = require('./SchemeNotification.model');
 
 module.exports = {
   Farmer,
@@ -20,4 +22,6 @@ module.exports = {
   WeatherAlert,
   Feedback,
   UsageEvent,
+  Scheme,
+  SchemeNotification,
 };

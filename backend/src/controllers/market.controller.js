@@ -29,6 +29,44 @@ const getTrend = async (req, res, next) => {
   }
 };
 
+const getFilters = async (req, res, next) => {
+  try {
+    const { state, district } = req.query;
+    const filters = await marketService.getFilterOptions({ state, district });
+    return ok(res, filters);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getBestMandis = async (req, res, next) => {
+  try {
+    const { commodity, state, limit } = req.query;
+    if (!commodity) {
+      return err(res, 'commodity is required', 'VALIDATION_ERROR', 400);
+    }
+    const mandis = await marketService.getBestMandis({
+      commodity, state, limit: parseInt(limit) || 10,
+    });
+    const msp = marketService.MSP_DATA[commodity] || null;
+    return ok(res, { mandis, msp });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getSummary = async (req, res, next) => {
+  try {
+    const { state, limit } = req.query;
+    const summary = await marketService.getPriceSummary({
+      state, limit: parseInt(limit) || 20,
+    });
+    return ok(res, { summary });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const createAlert = async (req, res, next) => {
   try {
     const alert = await marketService.createPriceAlert(req.farmerId, req.body);
@@ -59,4 +97,4 @@ const getMyAlerts = async (req, res, next) => {
   }
 };
 
-module.exports = { getPrices, getTrend, createAlert, deleteAlert, getMyAlerts };
+module.exports = { getPrices, getTrend, getFilters, getBestMandis, getSummary, createAlert, deleteAlert, getMyAlerts };
