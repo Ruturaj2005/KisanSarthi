@@ -16,7 +16,17 @@ const getProfile = async (req, res, next) => {
 
 const updateProfile = async (req, res, next) => {
   try {
-    const allowedFields = ['name', 'landSize', 'soilType', 'irrigationSrc', 'primaryCrops', 'location', 'preferredLang'];
+    const allowedFields = [
+      'name',
+      'landSize',
+      'soilType',
+      'irrigationSrc',
+      'primaryCrops',
+      'location',
+      'preferredLang',
+      'whatsappNumber',
+      'notificationsEnabled',
+    ];
     const update = {};
     for (const field of allowedFields) {
       if (req.body[field] !== undefined) {

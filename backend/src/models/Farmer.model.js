@@ -70,6 +70,16 @@ const farmerSchema = new mongoose.Schema(
       enum: ['en', 'hi', 'mr', 'pa', 'te', 'ta'],
       default: 'hi',
     },
+    whatsappNumber: {
+      type: String,
+      default: null,
+      trim: true,
+      match: [/^\d{10}$/, 'WhatsApp number must be a 10-digit Indian mobile number'],
+    },
+    notificationsEnabled: {
+      type: Boolean,
+      default: true,
+    },
     refreshToken: {
       type: String,
       default: null,
@@ -80,7 +90,6 @@ const farmerSchema = new mongoose.Schema(
   }
 );
 
-farmerSchema.index({ email: 1 }, { unique: true });
 farmerSchema.index({ role: 1 });
 
 farmerSchema.methods.toSafeObject = function () {
