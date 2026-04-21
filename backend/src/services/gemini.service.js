@@ -1,25 +1,34 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+// Using Ollama as the backend LLM natively
+const ollama = require('ollama').default || require('ollama');
 const { z } = require('zod');
 const env = require('../config/env');
 const logger = require('../utils/logger');
 
-// ── Gemini Client ──────────────────────────────────────────────────
-let genAI;
-let model;
+// We are overriding 'model' availability to true so operations proceed
+const isModelAvailable = true;
 
-try {
-  genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
-  model = genAI.getGenerativeModel({ model: env.GEMINI_MODEL });
-} catch (error) {
-  logger.warn('Gemini AI not initialized — API key may be missing', { service: 'gemini' });
-}
+const OLLAMA_MODEL = 'kimi-k2-thinking:cloud';
 
 // ── Zod Schemas for Response Validation ────────────────────────────
+const parseConfidence = z.preprocess((val) => {
+  if (typeof val === 'number') {
+    return val > 1 ? val / 100 : val;
+  }
+  if (typeof val === 'string') {
+    const cleaned = val.replace(/[^0-9.]/g, '');
+    const num = parseFloat(cleaned);
+    if (!isNaN(num)) {
+      return val.includes('%') || num > 1 ? num / 100 : num;
+    }
+  }
+  return 0.5;
+}, z.number().min(0).max(1));
+
 const advisorySchema = z.object({
   advice: z.string(),
   steps: z.array(z.string()).default([]),
-  urgency: z.enum(['low', 'medium', 'high']).default('low'),
-  confidence: z.number().min(0).max(1).default(0.5),
+  urgency: z.enum(['low', 'medium', 'high']).or(z.string()).default('low'),
+  confidence: parseConfidence.default(0.5),
   sources: z.array(z.string()).default([]),
   warnings: z.array(z.string()).default([]),
 });
@@ -28,13 +37,13 @@ const soilSchema = z.object({
   explanation: z.string(),
   recommendations: z.array(z.string()).default([]),
   rotationTip: z.string().default(''),
-  confidence: z.number().min(0).max(1).default(0.5),
+  confidence: parseConfidence.default(0.5),
 });
 
 const pestSchema = z.object({
   disease: z.string(),
-  confidence: z.number().min(0).max(1),
-  severity: z.enum(['low', 'medium', 'high', 'critical']),
+  confidence: parseConfidence,
+  severity: z.enum(['low', 'medium', 'high', 'critical']).or(z.string()),
   treatment: z.array(z.string()).default([]),
   organic: z.array(z.string()).default([]),
   chemical: z.array(z.string()).default([]),
@@ -85,7 +94,7 @@ Reply in JSON only:
   "advice": "<2-3 simple sentences in ${lang}>",
   "steps": ["<step 1>", "<step 2>", ...],
   "urgency": "low|medium|high",
-  "confidence": 0.0-1.0,
+  "confidence": 0.85,
   "sources": ["ICAR 2023", ...],
   "warnings": ["<any safety warnings>"]
 }`;
@@ -112,7 +121,7 @@ Reply in JSON only:
   "explanation": "<2-3 simple sentences>",
   "recommendations": ["<rec 1>", "<rec 2>", ...],
   "rotationTip": "<1 sentence crop rotation suggestion>",
-  "confidence": 0.0-1.0
+  "confidence": 0.85
 }`;
 }
 
@@ -128,7 +137,7 @@ Verify which is most likely and provide treatment advice.
 Reply in JSON only:
 {
   "disease": "<most likely disease name>",
-  "confidence": 0.0-1.0,
+  "confidence": 0.85,
   "severity": "low|medium|high|critical",
   "treatment": ["<step 1>", ...],
   "organic": ["<organic option 1>", ...],
@@ -176,14 +185,31 @@ Recommend ICAR-approved fertilizer schedule in JSON:
 
 // ── Defensive JSON Parser ──────────────────────────────────────────
 function parseGeminiJSON(raw, schema) {
-  const stripped = raw.replace(/```json|```/gi, '').trim();
+  let stripped = raw;
+  const match = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (match) {
+    stripped = match[1];
+  } else {
+    const start = raw.indexOf('{');
+    const end = raw.lastIndexOf('}');
+    if (start !== -1 && end !== -1) {
+      stripped = raw.substring(start, end + 1);
+    }
+  }
+  
   try {
     const parsed = JSON.parse(stripped);
-    return schema.parse(parsed);
+    try {
+      return schema.parse(parsed);
+    } catch (zodError) {
+      console.error('Zod Schema Validation Error:', zodError.errors);
+      console.log('Parsed Object:', parsed);
+      throw zodError;
+    }
   } catch (error) {
     logger.error('Failed to parse Gemini response', {
       service: 'gemini',
-      meta: { raw: stripped.substring(0, 200), error: error.message },
+      meta: { raw: raw.substring(0, 500), stripped: stripped.substring(0, 500), error: error.message },
     });
     throw new Error('AI response parsing failed');
   }
@@ -199,7 +225,7 @@ function parseGeminiJSON(raw, schema) {
  * @returns {Promise<object>} Parsed advisory response
  */
 const getCropAdvisory = async (context, query, lang = 'hi') => {
-  if (!model) {
+  if (!isModelAvailable) {
     return {
       advice: 'AI service is currently unavailable. Please try again later.',
       steps: [],
@@ -211,60 +237,64 @@ const getCropAdvisory = async (context, query, lang = 'hi') => {
   }
 
   const prompt = buildAdvisoryPrompt(context, query, lang);
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 800, temperature: 0.3 },
-  });
-  const text = result.response.text();
-  return parseGeminiJSON(text, advisorySchema);
+  try {
+    const response = await ollama.chat({
+      model: OLLAMA_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    return parseGeminiJSON(response.message.content, advisorySchema);
+  } catch (error) {
+    logger.error('Ollama Chat Error', { error: error.message });
+    throw error;
+  }
 };
 
 const getSoilExplanation = async (soilData, lang = 'hi') => {
-  if (!model) {
+  if (!isModelAvailable) {
     return { explanation: 'AI unavailable', recommendations: [], rotationTip: '', confidence: 0 };
   }
   const prompt = buildSoilExplainPrompt(soilData, lang);
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 400, temperature: 0.3 },
+  const response = await ollama.chat({
+    model: OLLAMA_MODEL,
+    messages: [{ role: 'user', content: prompt }],
   });
-  return parseGeminiJSON(result.response.text(), soilSchema);
+  return parseGeminiJSON(response.message.content, soilSchema);
 };
 
 const verifyPestDetection = async (labels, cropType, lang = 'hi') => {
-  if (!model) {
+  if (!isModelAvailable) {
     return { disease: labels[0]?.label || 'Unknown', confidence: 0, severity: 'low', treatment: [], organic: [], chemical: [], warnings: ['AI verification unavailable'] };
   }
   const prompt = buildPestVerifyPrompt(labels, cropType, lang);
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 300, temperature: 0.2 },
+  const response = await ollama.chat({
+    model: OLLAMA_MODEL,
+    messages: [{ role: 'user', content: prompt }],
   });
-  return parseGeminiJSON(result.response.text(), pestSchema);
+  return parseGeminiJSON(response.message.content, pestSchema);
 };
 
 const getWeatherAdvisory = async (weather, crop, lang = 'hi') => {
-  if (!model) {
+  if (!isModelAvailable) {
     return { advice: 'Weather advisory unavailable', steps: [], urgency: 'low', confidence: 0, sources: [], warnings: [] };
   }
   const prompt = buildWeatherAdvisoryPrompt(weather, crop, lang);
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 200, temperature: 0.3 },
+  const response = await ollama.chat({
+    model: OLLAMA_MODEL,
+    messages: [{ role: 'user', content: prompt }],
   });
-  return parseGeminiJSON(result.response.text(), advisorySchema);
+  return parseGeminiJSON(response.message.content, advisorySchema);
 };
 
 const getFertilizerAdvice = async (soilData, crop, lang = 'hi') => {
-  if (!model) {
+  if (!isModelAvailable) {
     return { advice: 'Fertilizer advice unavailable', steps: [], urgency: 'medium', confidence: 0, sources: [], warnings: [] };
   }
   const prompt = buildFertilizerPrompt(soilData, crop, lang);
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 400, temperature: 0.3 },
+  const response = await ollama.chat({
+    model: OLLAMA_MODEL,
+    messages: [{ role: 'user', content: prompt }],
   });
-  return parseGeminiJSON(result.response.text(), advisorySchema);
+  return parseGeminiJSON(response.message.content, advisorySchema);
 };
 
 module.exports = {

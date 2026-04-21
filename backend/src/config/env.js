@@ -21,7 +21,7 @@ const envSchema = z.object({
   REFRESH_TOKEN: z.string().optional().default(''),
 
   GEMINI_API_KEY: z.string().min(1, 'GEMINI_API_KEY is required'),
-  GEMINI_MODEL: z.string().default('gemini-1.5-flash'),
+  GEMINI_MODEL: z.string().default('gemini-flash-latest'),
   GEMINI_RATE_LIMIT_RPM: z.coerce.number().default(60),
 
   OWM_API_KEY: z.string().min(1, 'OWM_API_KEY is required'),
@@ -67,7 +67,7 @@ try {
       CLIENT_SECRET: process.env.CLIENT_SECRET || '',
       REFRESH_TOKEN: process.env.REFRESH_TOKEN || '',
       GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
-      GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+      GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
       GEMINI_RATE_LIMIT_RPM: parseInt(process.env.GEMINI_RATE_LIMIT_RPM) || 60,
       OWM_API_KEY: process.env.OWM_API_KEY || '',
       CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || '',

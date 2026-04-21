@@ -2,12 +2,12 @@
 
 > AI-powered precision agriculture platform for India's 120M+ small and marginal farmers.
 
-![Stack](https://img.shields.io/badge/Stack-Next.js%20%7C%20Express%20%7C%20MongoDB%20%7C%20Gemini%20%7C%20FastAPI-2D6A4F)
+![Stack](https://img.shields.io/badge/Stack-Next.js%20%7C%20Express%20%7C%20MongoDB%20%7C%20Ollama%20%7C%20FastAPI-2D6A4F)
 
 ## Features
 
-- 🤖 **AI Advisory Chat** — Gemini-powered crop advice in 6 Indian languages with voice input/output
-- 📷 **Pest Detection** — Upload crop images for disease identification (ONNX + Gemini fallback)
+- 🤖 **AI Advisory Chat** — Ollama-powered local crop advice in 6 Indian languages with voice input/output
+- 📸 **Pest Detection** — Upload crop images for disease identification (ONNX + Ollama fallback)
 - 🌱 **Soil Health Analysis** — NPK scoring, ICAR fertilizer recommendations, pH correction
 - 📊 **Market Intelligence** — Mandi prices, MSP comparison, price trend charts, alerts
 - 🌤️ **Weather Alerts** — Real-time weather with farming-specific action alerts
@@ -20,7 +20,7 @@
 |-------|-----------|
 | Frontend | Next.js 14 (App Router), Tailwind CSS v4, Zustand, TanStack Query, Recharts |
 | Backend | Express.js, Mongoose, JWT (access + refresh), Nodemailer (OAuth2), Zod |
-| AI | Google Gemini 1.5 Flash, ONNX Runtime |
+| AI | Ollama (`kimi-k2-thinking:cloud` model), ONNX Runtime |
 | Database | MongoDB Atlas |
 | ML Service | FastAPI, ONNX, Pillow |
 
@@ -29,6 +29,7 @@
 ### Prerequisites
 - Node.js 18+
 - MongoDB (local or Atlas)
+- Ollama (installed locally with `kimi-k2-thinking:cloud` model pulled)
 - Python 3.9+ (for ML service, optional)
 
 ### 1. Clone & Install
@@ -51,7 +52,6 @@ cp .env.example backend/.env
 # Edit backend/.env with your credentials:
 #   - MONGODB_URI
 #   - CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN, EMAIL_USER (Google OAuth2)
-#   - GEMINI_API_KEY
 #   - OWM_API_KEY
 #   - CLOUDINARY credentials
 ```
