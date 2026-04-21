@@ -18,6 +18,14 @@ const marketPriceSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    variety: {
+      type: String,
+      default: '',
+    },
+    grade: {
+      type: String,
+      default: '',
+    },
     minPrice: {
       type: Number,
       required: true,

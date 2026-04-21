@@ -12,12 +12,28 @@ const soilTestSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+
+    // ── Core Parameters ────────────────────────────────────────
     ph: {
       type: Number,
       min: 4.0,
       max: 9.0,
       required: true,
     },
+    organicCarbon: {
+      type: Number,
+      min: 0,
+      max: 3,
+      default: null,
+    },
+    ec: {
+      type: Number,
+      min: 0,
+      max: 5,
+      default: null,
+    },
+
+    // ── Major Nutrients (categorical) ──────────────────────────
     nitrogen: {
       type: String,
       enum: ['low', 'medium', 'high'],
@@ -38,6 +54,19 @@ const soilTestSchema = new mongoose.Schema(
       enum: ['low', 'medium', 'high'],
       required: true,
     },
+
+    // ── Major Nutrients (numeric, kg/ha) ───────────────────────
+    nitrogenValue: { type: Number, default: null },
+    phosphorusValue: { type: Number, default: null },
+    potassiumValue: { type: Number, default: null },
+
+    // ── Micronutrients (ppm) ───────────────────────────────────
+    zinc: { type: Number, default: null },
+    iron: { type: Number, default: null },
+    boron: { type: Number, default: null },
+    manganese: { type: Number, default: null },
+
+    // ── Results ────────────────────────────────────────────────
     healthScore: {
       type: Number,
       min: 0,
@@ -47,6 +76,11 @@ const soilTestSchema = new mongoose.Schema(
     crop: {
       type: String,
       default: '',
+    },
+    inputMode: {
+      type: String,
+      enum: ['quick', 'advanced'],
+      default: 'quick',
     },
     aiExplanation: {
       type: String,
