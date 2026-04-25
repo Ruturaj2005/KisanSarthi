@@ -1,7 +1,8 @@
 const { SoilTest } = require('../models');
 const soilService = require('../services/soil.service');
-const geminiService = require('../services/gemini.service');
+const hfService = require('../services/huggingface.service');
 const { ok, err } = require('../utils/apiResponse');
+const logger = require('../utils/logger');
 
 const createSoilTest = async (req, res, next) => {
   try {
@@ -52,14 +53,15 @@ const createSoilTest = async (req, res, next) => {
     // Soil improvement action plan
     const improvementPlan = soilService.getSoilImprovementPlan(soilData, crop);
 
-    // AI explanation
+    // AI explanation using Hugging Face
     const lang = req.farmer?.preferredLang || 'hi';
     const aiSoilData = { soilType, ph, nitrogen: nCat, phosphorus: pCat, potassium: kCat, moisture, healthScore, crop };
     let aiExplanation = '';
     try {
-      const aiResult = await geminiService.getSoilExplanation(aiSoilData, lang);
+      const aiResult = await hfService.analyzeSoil(aiSoilData, lang);
       aiExplanation = aiResult.explanation || '';
-    } catch {
+    } catch (err) {
+      logger.warn('HF soil analysis failed', { service: 'soil', error: err.message });
       aiExplanation = '';
     }
 

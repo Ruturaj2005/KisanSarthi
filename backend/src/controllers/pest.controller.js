@@ -1,6 +1,5 @@
 const { PestDetection } = require('../models');
 const cloudinaryService = require('../services/cloudinary.service');
-const geminiService = require('../services/gemini.service');
 const { ok, err } = require('../utils/apiResponse');
 const env = require('../config/env');
 const logger = require('../utils/logger');
@@ -49,53 +48,30 @@ const detect = async (req, res, next) => {
     let treatment = [];
     let organic = [];
     let chemical = [];
-    let geminiVerified = false;
 
     if (mlResult && mlResult.prediction) {
       disease = mlResult.prediction.label || 'Unknown';
       confidence = mlResult.prediction.confidence || 0;
+      
+      // Determine severity from confidence
+      if (confidence >= 0.9) severity = 'high';
+      else if (confidence >= 0.75) severity = 'medium';
+      else severity = 'low';
 
-      // If low confidence, use Gemini to verify
-      if (confidence < 0.70 && mlResult.top3) {
-        try {
-          const lang = req.farmer?.preferredLang || 'hi';
-          const geminiResult = await geminiService.verifyPestDetection(mlResult.top3, cropType, lang);
-          disease = geminiResult.disease;
-          confidence = geminiResult.confidence;
-          severity = geminiResult.severity;
-          treatment = geminiResult.treatment;
-          organic = geminiResult.organic;
-          chemical = geminiResult.chemical;
-          geminiVerified = true;
-        } catch {
-          logger.warn('Gemini pest verification failed', { service: 'pest' });
-        }
+      // Provide basic treatment suggestions based on disease
+      if (disease.toLowerCase().includes('healthy')) {
+        treatment = ['Continue regular monitoring', 'Maintain crop health', 'Follow standard practices'];
+        organic = ['Regular crop rotation', 'Proper drainage management'];
+        chemical = [];
+      } else {
+        treatment = ['Isolate affected plants if possible', 'Monitor spread', 'Consult local agricultural officer'];
+        organic = ['Use neem oil or organic pesticides', 'Increase spacing between plants for air circulation'];
+        chemical = ['Consult agricultural officer for chemical recommendations'];
       }
     } else {
-      // ML service unavailable — use Gemini directly with placeholder
-      try {
-        const lang = req.farmer?.preferredLang || 'hi';
-        const geminiResult = await geminiService.verifyPestDetection(
-          [{ label: 'Unable to identify — image analysis pending', confidence: 0 }],
-          cropType || 'Unknown',
-          lang
-        );
-        disease = geminiResult.disease;
-        severity = geminiResult.severity;
-        treatment = geminiResult.treatment;
-        organic = geminiResult.organic;
-        chemical = geminiResult.chemical;
-        geminiVerified = true;
-      } catch {
-        // Both services failed
-      }
-    }
-
-    // Determine severity from confidence if not set by Gemini
-    if (!geminiVerified) {
-      if (confidence >= 0.9) severity = 'high';
-      else if (confidence >= 0.7) severity = 'medium';
-      else severity = 'low';
+      // ML service unavailable
+      logger.warn('ML service unavailable, returning error', { service: 'pest' });
+      return err(res, 'Disease detection service unavailable. Please try again.', 'SERVICE_UNAVAILABLE', 503);
     }
 
     // Save detection
@@ -110,7 +86,7 @@ const detect = async (req, res, next) => {
       treatment,
       organic,
       chemical,
-      geminiVerified,
+      geminiVerified: false,
     });
 
     return ok(res, { detection }, 'Pest detection complete', 201);

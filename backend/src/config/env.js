@@ -20,9 +20,12 @@ const envSchema = z.object({
   CLIENT_SECRET: z.string().optional().default(''),
   REFRESH_TOKEN: z.string().optional().default(''),
 
-  GEMINI_API_KEY: z.string().min(1, 'GEMINI_API_KEY is required'),
+  GEMINI_API_KEY: z.string().optional().default(''),
   GEMINI_MODEL: z.string().default('gemini-flash-latest'),
   GEMINI_RATE_LIMIT_RPM: z.coerce.number().default(60),
+
+  HF_API_KEY: z.string().min(1, 'HF_API_KEY is required'),
+  HF_MODEL: z.string().default('mistral-community/Mistral-7B-Instruct-v0.1'),
 
   OWM_API_KEY: z.string().min(1, 'OWM_API_KEY is required'),
 
@@ -69,6 +72,8 @@ try {
       GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
       GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
       GEMINI_RATE_LIMIT_RPM: parseInt(process.env.GEMINI_RATE_LIMIT_RPM) || 60,
+      HF_API_KEY: process.env.HF_API_KEY || '',
+      HF_MODEL: process.env.HF_MODEL || 'mistral-community/Mistral-7B-Instruct-v0.1',
       OWM_API_KEY: process.env.OWM_API_KEY || '',
       CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || '',
       CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '',

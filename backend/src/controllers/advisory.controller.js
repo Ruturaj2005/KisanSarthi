@@ -1,5 +1,5 @@
 const { Advisory } = require('../models');
-const geminiService = require('../services/gemini.service');
+const hfService = require('../services/huggingface.service');
 const weatherService = require('../services/weather.service');
 const { ok, err } = require('../utils/apiResponse');
 
@@ -33,7 +33,7 @@ const chat = async (req, res, next) => {
     }
 
     const lang = farmer.preferredLang || 'hi';
-    const aiResult = await geminiService.getCropAdvisory(context, query, lang);
+    const aiResult = await hfService.getCropAdvisory(context, query, lang);
 
     // Save advisory
     const advisory = await Advisory.create({
@@ -61,10 +61,10 @@ const chat = async (req, res, next) => {
     });
   } catch (error) {
     // Return user-friendly errors for known AI issues
-    if (error.name === 'GeminiRateLimitError') {
-      return err(res, error.message, 'RATE_LIMITED', 429);
+    if (error.name === 'HfRateLimitError') {
+      return err(res, 'Service is busy. Please try again in a moment.', 'RATE_LIMITED', 429);
     }
-    if (error.name === 'GeminiApiError') {
+    if (error.name === 'HfApiError') {
       return err(res, error.message, 'AI_ERROR', error.statusCode || 500);
     }
     next(error);
