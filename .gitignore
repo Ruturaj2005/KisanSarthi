@@ -54,3 +54,19 @@ coverage/
 *.tar.gz
 .vercel
 .turbo
+
+# Unnecessary docs & debug scripts
+BACKEND_IMPLEMENTATION_SUMMARY.md
+EMAIL_SETUP_GUIDE.md
+ML_DEBUGGING_GUIDE.md
+PEST_DETECTION_SETUP.md
+TROUBLESHOOTING_EMAIL.md
+WHATSAPP_SCHEME_FEATURE.md
+ps.md
+backend/crash.log
+backend/test-email.js
+backend/test-smtp-ports.js
+backend/test-smtp.js
+frontend/AGENTS.md
+frontend/CLAUDE.md
+ml-service/diagnose.py
