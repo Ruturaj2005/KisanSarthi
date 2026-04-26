@@ -94,7 +94,7 @@ Cloudinary storage (optional)
        ↓
 ML Service (ONNX model) → Prediction
        ↓
-If confidence < 70% → Verify with Gemini AI
+If confidence < 70% → Verify with Hugging Face AI
        ↓
 Save detection result + treatment recommendations
        ↓
@@ -125,8 +125,8 @@ uvicorn ml-service.app.main:app --reload --port 8000
 
 ### Low Confidence Results
 - Image quality matters (clear, well-lit photos work best)
-- Gemini AI will verify if confidence < 70%
-- Make sure `GEMINI_API_KEY` is set in `backend/.env`
+- Hugging Face AI will verify if confidence < 70%
+- Make sure `HF_API_KEY` is set in `backend/.env`
 
 ---
 
@@ -142,7 +142,7 @@ uvicorn ml-service.app.main:app --reload --port 8000
 
 3. Backend (`backend/src/controllers/pest.controller.js`)
    - Already correctly configured
-   - Falls back to Gemini if ML service unavailable
+       - Falls back to Hugging Face if ML service unavailable
 
 ---
 
@@ -150,7 +150,7 @@ uvicorn ml-service.app.main:app --reload --port 8000
 
 1. ✅ Start ML service on port 8000
 2. ✅ Verify health endpoint works
-3. ✅ Backend running with GEMINI_API_KEY set
+3. ✅ Backend running with HF_API_KEY set
 4. ✅ Upload test crop image
 5. ✅ Check detection results
 

@@ -9,8 +9,7 @@
     "seed": "node src/scripts/seed.js"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
-    "@huggingface/inference": "^2.8.1",
+    "@huggingface/inference": "^4.13.15",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^2.9.0",
     "cookie-parser": "^1.4.7",

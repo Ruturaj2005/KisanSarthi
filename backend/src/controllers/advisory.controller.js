@@ -1,7 +1,26 @@
 const { Advisory } = require('../models');
-const hfService = require('../services/huggingface.service');
+const { getAgriculturalAdvice } = require('../services/advisoryService');
 const weatherService = require('../services/weather.service');
 const { ok, err } = require('../utils/apiResponse');
+const logger = require('../utils/logger');
+
+const HISTORY_LIMIT = 10;
+
+const buildConversationHistory = (advisories = []) => {
+  return advisories.flatMap((item) => {
+    const messages = [];
+
+    if (item.queryText) {
+      messages.push({ role: 'user', content: item.queryText });
+    }
+
+    if (item.aiResponse) {
+      messages.push({ role: 'assistant', content: item.aiResponse });
+    }
+
+    return messages;
+  });
+};
 
 const chat = async (req, res, next) => {
   try {
@@ -33,7 +52,25 @@ const chat = async (req, res, next) => {
     }
 
     const lang = farmer.preferredLang || 'hi';
-    const aiResult = await hfService.getCropAdvisory(context, query, lang);
+
+    // Rebuild prior conversation from previous advisory turns.
+    const recentAdvisories = await Advisory.find({ farmerId: farmer._id })
+      .sort({ createdAt: -1 })
+      .limit(HISTORY_LIMIT)
+      .select('queryText aiResponse')
+      .lean();
+
+    const conversationHistory = buildConversationHistory(recentAdvisories.reverse());
+    const adviceText = await getAgriculturalAdvice(query, conversationHistory);
+
+    const aiResult = {
+      advice: adviceText,
+      steps: [],
+      urgency: 'low',
+      confidence: 0.7,
+      sources: ['Hugging Face Inference API'],
+      warnings: [],
+    };
 
     // Save advisory
     const advisory = await Advisory.create({
@@ -60,14 +97,22 @@ const chat = async (req, res, next) => {
       },
     });
   } catch (error) {
-    // Return user-friendly errors for known AI issues
-    if (error.name === 'HfRateLimitError') {
-      return err(res, 'Service is busy. Please try again in a moment.', 'RATE_LIMITED', 429);
+    logger.error('Advisory chat failed', {
+      service: 'advisory-controller',
+      meta: { error: error.message, stack: error.stack },
+    });
+
+    const message = (error?.message || '').toLowerCase();
+
+    if (message.includes('loading')) {
+      return err(res, 'Model is warming up, please try again in 30 seconds', 'MODEL_LOADING', 503);
     }
-    if (error.name === 'HfApiError') {
-      return err(res, error.message, 'AI_ERROR', error.statusCode || 500);
+
+    if (message.includes('rate limit') || message.includes('too many requests')) {
+      return err(res, 'Too many requests', 'RATE_LIMITED', 429);
     }
-    next(error);
+
+    return err(res, 'Internal server error', 'INTERNAL_ERROR', 500);
   }
 };
 

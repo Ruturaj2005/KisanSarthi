@@ -4,7 +4,7 @@ const logger = require('../utils/logger');
 
 // ── Initialize Hugging Face Client ─────────────────────────────────
 const hf = new HfInference(env.HF_API_KEY);
-let MODEL = env.HF_MODEL || 'mistral-community/Mistral-7B-Instruct-v0.1';
+let MODEL = env.HF_MODEL_ID || 'mistralai/Mistral-7B-Instruct-v0.3';
 
 const isModelAvailable = !!env.HF_API_KEY;
 

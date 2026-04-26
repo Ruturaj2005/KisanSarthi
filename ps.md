@@ -26,7 +26,7 @@ You **think before you code**. For every file you generate, you first output a 3
 | **Name** | KisanSaathi ("Farmer's Companion") |
 | **Mission** | Democratize precision agriculture for India's 120M+ small and marginal farmers |
 | **Core Insight** | 68% of target users have <8th grade literacy. The UX must communicate through icons, color, voice, and spoken numbers — not walls of text. |
-| **Stack** | Next.js 14 (App Router) · Express · MongoDB Atlas · Gemini 1.5 Flash · FastAPI + ONNX |
+| **Stack** | Next.js 14 (App Router) · Express · MongoDB Atlas · Hugging Face Inference API · FastAPI + ONNX |
 | **Languages** | Hindi · Marathi · Punjabi · Telugu · Tamil · English |
 | **Deployment** | Vercel + Railway + HuggingFace Spaces |
 | **Design System** | Organic-earthy: forest greens, harvest amber, soil browns — evokes land and growth |
@@ -45,9 +45,9 @@ Full experience (4G + GPS + camera)
 Implement Service Worker caching strategy in `next.config.js`.
 
 ### 2. AI Prompt Contract
-All Gemini calls must follow this contract — **no exceptions**:
+All Hugging Face calls must follow this contract — **no exceptions**:
 ```js
-// gemini.service.js — STRICT PATTERN
+// advisoryService.js — STRICT PATTERN
 const SYSTEM_PREFIX = `You are KisanSaathi. RULES:
 1. Always reply in valid JSON only — no markdown, no prose outside JSON.
 2. Language: {lang}. Use vocabulary a 7th-grade farmer understands.
@@ -68,7 +68,7 @@ Define the full error→message map in `utils/farmerMessages.js`.
 Farmer's location coordinates must **never** be logged in plaintext. Hash with SHA-256 before any logging or analytics storage.
 
 ### 5. Idempotency Keys
-All POST routes that trigger external calls (OTP email, market fetch, Gemini) must accept an `X-Idempotency-Key` header and deduplicate within a 30-second window using an in-memory TTL cache (`lru-cache`).
+All POST routes that trigger external calls (OTP email, market fetch, Hugging Face) must accept an `X-Idempotency-Key` header and deduplicate within a 30-second window using an in-memory TTL cache (`lru-cache`).
 
 ---
 
@@ -119,7 +119,7 @@ kisansaathi/
 │   │   ├── controllers/          # Input extraction → service call → response formatting
 │   │   ├── middleware/           # auth · validate · upload · error · rateLimiter · idempotency
 │   │   ├── services/             # All business logic lives here
-│   │   │   ├── gemini.service.js
+│   │   │   ├── advisoryService.js
 │   │   │   ├── weather.service.js
 │   │   │   ├── market.service.js
 │   │   │   ├── soil.service.js
@@ -168,9 +168,8 @@ SMTP_USER=your@gmail.com
 SMTP_PASS=                         # Gmail App Password
 SMTP_FROM="KisanSaathi <noreply@kisansaathi.in>"
 
-GEMINI_API_KEY=
-GEMINI_MODEL=gemini-1.5-flash      # locked — never upgrade without testing
-GEMINI_RATE_LIMIT_RPM=60           # free tier guard
+HF_API_KEY=
+HF_MODEL_ID=mistralai/Mistral-7B-Instruct-v0.3
 
 OWM_API_KEY=
 CLOUDINARY_CLOUD_NAME=
@@ -229,7 +228,7 @@ NEXT_PUBLIC_DEFAULT_LANG=hi
   aiResponse:      String,
   steps:           [String],
   urgency:         { type: String, enum: ['low','medium','high'] },
-  confidence:      Number,  // 0–1 from Gemini
+  confidence:      Number,  // 0–1 from Hugging Face output
   language:        String,
   rating:          { type: Number, min: 1, max: 5, default: null },
   feedbackComment: String,
@@ -285,7 +284,7 @@ NEXT_PUBLIC_DEFAULT_LANG=hi
   treatment:   [String],
   organic:     [String],
   chemical:    [String],
-  geminiVerified: Boolean,  // true if Gemini was used to verify low-confidence results
+  geminiVerified: Boolean,  // true if Hugging Face was used to verify low-confidence results
 }
 ```
 
@@ -341,10 +340,10 @@ POST /api/auth/logout  → clear cookie + null farmer.refreshToken
 
 ---
 
-## GEMINI AI SERVICE (Complete Contract)
+## HUGGING FACE AI SERVICE (Complete Contract)
 
 ```js
-// gemini.service.js
+// advisoryService.js
 // ALL six advisory types funnel through one buildPrompt() factory
 
 const PERSONA = `You are KisanSaathi, India's trusted farm advisor.
@@ -386,8 +385,8 @@ function estimateStage(ctx) {
   return 'maturity';
 }
 
-// Defensive JSON parser — used after EVERY Gemini call
-function parseGeminiJSON(raw) {
+// Defensive JSON parser — used after EVERY Hugging Face call
+function parseHfJSON(raw) {
   const stripped = raw.replace(/```json|```/gi, '').trim();
   const parsed = JSON.parse(stripped);
   // Zod validate shape before returning
@@ -395,7 +394,7 @@ function parseGeminiJSON(raw) {
 }
 ```
 
-**Gemini features map:**
+**Hugging Face features map:**
 
 | Feature | Prompt Type | Max Tokens |
 |---------|-------------|------------|
@@ -676,7 +675,7 @@ Tables:
 #   Preprocess: resize 224×224, normalize ImageNet mean/std
 #   ONNX inference → softmax → top-1 confidence
 #   If confidence < 0.70 → return top-3 + lowConfidence: true
-#   Backend then calls Gemini pestVerifyPrompt with top-3 labels for interpretation
+#   Backend then calls Hugging Face pestVerifyPrompt with top-3 labels for interpretation
 #
 # GET /health → { status: "ok", model: "efficientnet-b0", classes: 38 }
 
@@ -740,13 +739,13 @@ const ERROR_CODES = {
 
 ### Phase 2 — Core Features
 8. Farmer profile CRUD + `/profile` page
-9. Gemini service + advisory chat + `/chat` with voice input
+9. Hugging Face advisory service + advisory chat + `/chat` with voice input
 10. Weather service + dashboard weather widget
 11. Soil scoring engine + `/soil` page with animated gauge
 
 ### Phase 3 — Advanced Features
 12. Market pipeline + cron + `/market` with trend chart
-13. Pest detection (Cloudinary + ML + Gemini fallback) + `/scan`
+13. Pest detection (Cloudinary + ML + Hugging Face fallback) + `/scan`
 14. Admin API + `/admin` dashboard
 
 ### Phase 4 — Production Hardening
