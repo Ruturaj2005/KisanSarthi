@@ -23,32 +23,13 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    const allowedOrigins = [
-      process.env.FRONTEND_URL,
-      'http://localhost:3000',
-      'http://localhost:3001',
-    ].filter(Boolean); // removes undefined if FRONTEND_URL not set
-
-    // Allow requests with no origin (mobile apps, Postman, curl)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.error(`CORS blocked: ${origin} | Allowed: ${allowedOrigins}`);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
+app.use(cors({
+  origin: '*',
+  credentials: false,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
-};
-
-// Handle preflight OPTIONS requests for all routes
-app.options('*', cors(corsOptions));
-app.use(cors(corsOptions));
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With'],
+}));
+app.options('*', cors({ origin: '*' }));
 
 // ── Body Parsing ───────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
