@@ -35,7 +35,7 @@
 ### 1. Clone & Install
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/Ruturaj2005/KisanSarthi.git
 cd KisanSarthi
 
 # Install all dependencies
