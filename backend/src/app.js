@@ -27,17 +27,27 @@ const corsOptions = {
   origin: function (origin, callback) {
     const allowedOrigins = [
       process.env.FRONTEND_URL,
-      'http://localhost:3000'
-    ];
-    if (!origin || allowedOrigins.includes(origin)) {
+      'http://localhost:3000',
+      'http://localhost:3001',
+    ].filter(Boolean); // removes undefined if FRONTEND_URL not set
+
+    // Allow requests with no origin (mobile apps, Postman, curl)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.error(`CORS blocked: ${origin} | Allowed: ${allowedOrigins}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
 };
 
+// Handle preflight OPTIONS requests for all routes
+app.options('*', cors(corsOptions));
 app.use(cors(corsOptions));
 
 // ── Body Parsing ───────────────────────────────────────────────────
