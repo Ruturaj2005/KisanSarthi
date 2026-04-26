@@ -8,6 +8,7 @@ const { getFarmerMessage } = require('../utils/farmerMessages');
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
+  trustProxy: true,
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
@@ -26,6 +27,7 @@ const authLimiter = rateLimit({
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
+  trustProxy: true,
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
