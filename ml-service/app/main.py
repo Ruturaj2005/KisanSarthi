@@ -5,15 +5,28 @@ import numpy as np
 from PIL import Image
 import io
 import os
+import urllib.request
 
 # ── Model Loading ───────────────────────────────────────────────────
 model_session = None
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "model", "efficientnet_b0_kisansarthi.onnx")
+MODEL_URL = os.getenv("MODEL_URL", "")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Load ONNX model once at startup."""
     global model_session
+    
+    # Download model if it doesn't exist
+    if not os.path.exists(MODEL_PATH):
+        if MODEL_URL:
+            print(f"Downloading model...")
+            os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+            urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
+            print("Model downloaded!")
+        else:
+            print("MODEL_URL not set")
+
     try:
         import onnxruntime as ort
         if os.path.exists(MODEL_PATH):

@@ -27,6 +27,7 @@ ml-service/venv/
 ml-service/app/model/*.onnx
 *.pyc
 *.pyo
+D:\Projects\PEP SemV\KisanSarthi\ml-service\app\model\efficientnet_b0_kisansarthi.onnx
 
 # Debug logs
 npm-debug.log*
