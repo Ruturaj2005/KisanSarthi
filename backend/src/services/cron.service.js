@@ -1,13 +1,38 @@
 const cron = require('node-cron');
 const marketService = require('./market.service');
+const agmarknetService = require('./agmarknet.service');
 const logger = require('../utils/logger');
 const { syncPortalSchemesAndNotifyLoggedInFarmers } = require('./scheme.service');
 
 /**
- * Generate simulated market data for development.
- * In production, this would fetch from Agmarknet API.
+ * Fetch real market data from AGMARKNET API for DB storage.
+ * Falls back to simulated data if the API is unavailable.
  */
-function generateMarketData() {
+async function fetchMarketData() {
+  try {
+    logger.info('Fetching market data from AGMARKNET API', { service: 'cron' });
+    const records = await agmarknetService.fetchBulkPrices({ limit: 500, pages: 3 });
+
+    if (records.length > 0) {
+      logger.info(`AGMARKNET returned ${records.length} records for DB sync`, { service: 'cron' });
+      return records;
+    }
+
+    logger.warn('AGMARKNET returned 0 records, falling back to simulated data', { service: 'cron' });
+    return generateSimulatedData();
+  } catch (error) {
+    logger.error('AGMARKNET API failed for cron sync, using simulated data', {
+      service: 'cron',
+      meta: { error: error.message },
+    });
+    return generateSimulatedData();
+  }
+}
+
+/**
+ * Generate simulated market data as fallback (development/offline).
+ */
+function generateSimulatedData() {
   const records = [];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -55,14 +80,14 @@ function generateMarketData() {
 
 /**
  * Daily market data sync job.
- * Runs at 06:00 IST daily.
+ * Runs at 06:00 and 18:00 IST daily for better trend coverage.
  */
 function startCronJobs() {
-  // Market data sync — 06:00 IST daily
-  cron.schedule('0 6 * * *', async () => {
-    logger.info('Starting daily market data sync', { service: 'cron' });
+  // Market data sync — 06:00 and 18:00 IST daily
+  cron.schedule('0 6,18 * * *', async () => {
+    logger.info('Starting daily market data sync from AGMARKNET', { service: 'cron' });
     try {
-      const records = generateMarketData();
+      const records = await fetchMarketData();
       let upserted = 0;
       for (const record of records) {
         await marketService.upsertPrice(record);
@@ -100,14 +125,14 @@ function startCronJobs() {
     timezone: 'Asia/Kolkata',
   });
 
-  logger.info('Cron jobs started', { service: 'cron' });
+  logger.info('Cron jobs started (AGMARKNET sync at 06:00 & 18:00 IST)', { service: 'cron' });
 }
 
 /**
  * Run market sync immediately (for initial seed or manual trigger).
  */
 const syncMarketDataNow = async () => {
-  const records = generateMarketData();
+  const records = await fetchMarketData();
   let upserted = 0;
   for (const record of records) {
     await marketService.upsertPrice(record);

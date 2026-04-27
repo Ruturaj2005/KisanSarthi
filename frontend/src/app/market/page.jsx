@@ -49,9 +49,15 @@ export default function MarketPage() {
   const [trendMsp, setTrendMsp] = useState(null);
   const [selectedMandi, setSelectedMandi] = useState('');
   const [trendDays, setTrendDays] = useState(30);
+  const [dataSource, setDataSource] = useState(''); // 'agmarknet' | 'database'
+  const [isStale, setIsStale] = useState(false);
 
   // ── UI state ─────────────────────────────────────────────────────
   const [loading, setLoading] = useState(false);
+  const [trendLoading, setTrendLoading] = useState(false);
+  const [trendMessage, setTrendMessage] = useState('');
+  const [trendRequested, setTrendRequested] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'table' | 'alerts'
   const [sortField, setSortField] = useState('modalPrice');
   const [sortDir, setSortDir] = useState('desc');
@@ -75,12 +81,14 @@ export default function MarketPage() {
   const fetchPrices = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { limit: 100 };
+      const params = { limit: 500 };
       if (state) params.state = state;
       if (district) params.district = district;
       if (commodity) params.commodity = commodity;
       const { data } = await api.get('/market/prices', { params });
       setPrices(data.data.prices || []);
+      setDataSource(data.data.source || '');
+      setIsStale(data.data.stale || false);
     } catch {
       toast.error('Failed to load market prices');
     } finally {
@@ -121,12 +129,35 @@ export default function MarketPage() {
   const fetchTrend = async (mandi) => {
     if (!commodity || !mandi) return;
     setSelectedMandi(mandi);
+    setTrendRequested(true);
+    setTrendLoading(true);
+    setTrendMessage('');
     try {
       const { data } = await api.get('/market/trend', { params: { commodity, mandi, days: trendDays } });
       setTrend(data.data.trend || []);
       setTrendMsp(data.data.msp);
+      setTrendMessage(data.data.message || '');
     } catch {
       toast.error('Failed to load price trend');
+    } finally {
+      setTrendLoading(false);
+    }
+  };
+
+  // ── Manual sync ──────────────────────────────────────────────────
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const { data } = await api.post('/market/sync');
+      toast.success(`Synced ${data.data.upserted} records from AGMARKNET`);
+      // Re-fetch trend if one was requested
+      if (selectedMandi && commodity) {
+        fetchTrend(selectedMandi);
+      }
+    } catch {
+      toast.error('Failed to sync market data');
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -160,13 +191,32 @@ export default function MarketPage() {
     <div className="max-w-5xl mx-auto px-4 py-6 pb-24 animate-fade-in">
       {/* ── Header ──────────────────────────────────────────────── */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-ink flex items-center gap-2">
-          📊 {t.market.title}
-        </h1>
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1 className="text-2xl font-bold text-ink flex items-center gap-2">
+            📊 {t.market.title}
+          </h1>
+          {dataSource === 'agmarknet' && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              Live — AGMARKNET
+            </span>
+          )}
+          {dataSource === 'database' && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
+              📦 Cached Data
+            </span>
+          )}
+        </div>
         <p className="text-sm text-gray-500 mt-1">
           {prices.length > 0 && `${prices.length} ${t.market.totalRecords}`}
           {prices.length > 0 && prices[0]?.date && ` • ${t.market.lastUpdated}: ${new Date(prices[0].date).toLocaleDateString('en-IN')}`}
         </p>
+        {isStale && (
+          <div className="mt-2 px-4 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm flex items-center gap-2">
+            <span>⚠️</span>
+            <span>Live market API is temporarily unavailable. Showing cached data from our database.</span>
+          </div>
+        )}
       </div>
 
       {/* ── Smart Filter Bar ────────────────────────────────────── */}
@@ -491,7 +541,7 @@ export default function MarketPage() {
           {/* ═══════════════════════════════════════════════════════════
               SECTION: Price Trend Chart
              ═══════════════════════════════════════════════════════════ */}
-          {trendData.length > 0 && (
+          {trendRequested && (
             <Card className="mb-4 animate-slide-up" id="trend-chart-section">
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -513,38 +563,72 @@ export default function MarketPage() {
                   ))}
                 </div>
               </div>
-              <ResponsiveContainer width="100%" height={260}>
-                <LineChart data={trendData}>
-                  <defs>
-                    <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#2D6A4F" stopOpacity={0.2} />
-                      <stop offset="95%" stopColor="#2D6A4F" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <Tooltip
-                    formatter={(v) => [`₹${v?.toLocaleString('en-IN')}/q`, 'Price']}
-                    contentStyle={{ borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="price"
-                    stroke="#2D6A4F"
-                    strokeWidth={2.5}
-                    dot={{ r: 3, fill: '#2D6A4F' }}
-                    activeDot={{ r: 6, fill: '#52B788' }}
-                  />
-                  {trendMsp && (
-                    <ReferenceLine
-                      y={trendMsp}
-                      stroke="#F4A261"
-                      strokeDasharray="5 5"
-                      label={{ value: `MSP ₹${trendMsp}`, position: 'top', fill: '#F4A261', fontSize: 11 }}
+
+              {trendLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest" />
+                  <span className="ml-3 text-sm text-gray-500">Loading trend data...</span>
+                </div>
+              ) : trendData.length > 1 ? (
+                /* ── Chart with data ─────────────────────────────────── */
+                <ResponsiveContainer width="100%" height={260}>
+                  <LineChart data={trendData}>
+                    <defs>
+                      <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#2D6A4F" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="#2D6A4F" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="date" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <Tooltip
+                      formatter={(v) => [`₹${v?.toLocaleString('en-IN')}/q`, 'Price']}
+                      contentStyle={{ borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
                     />
+                    <Line
+                      type="monotone"
+                      dataKey="price"
+                      stroke="#2D6A4F"
+                      strokeWidth={2.5}
+                      dot={{ r: 3, fill: '#2D6A4F' }}
+                      activeDot={{ r: 6, fill: '#52B788' }}
+                    />
+                    {trendMsp && (
+                      <ReferenceLine
+                        y={trendMsp}
+                        stroke="#F4A261"
+                        strokeDasharray="5 5"
+                        label={{ value: `MSP ₹${trendMsp}`, position: 'top', fill: '#F4A261', fontSize: 11 }}
+                      />
+                    )}
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                /* ── Empty state: not enough data yet ──────────────── */
+                <div className="text-center py-10">
+                  <div className="text-4xl mb-3">📊</div>
+                  <h4 className="font-semibold text-ink text-sm mb-1">Not enough trend data yet</h4>
+                  <p className="text-xs text-gray-400 max-w-sm mx-auto mb-4">
+                    {trendMessage || 'The AGMARKNET API only provides current-day prices. Trend data builds up automatically as daily prices are synced to our database. Check back in a few days!'}
+                  </p>
+                  {trendData.length === 1 && (
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-forest/5 text-forest text-sm font-semibold mb-4">
+                      <span>Today's price:</span>
+                      <span className="text-lg">₹{trendData[0].price?.toLocaleString('en-IN')}/q</span>
+                    </div>
                   )}
-                </LineChart>
-              </ResponsiveContainer>
+                  <div>
+                    <button
+                      onClick={handleSync}
+                      disabled={syncing}
+                      className="px-4 py-2 rounded-xl bg-forest text-white text-sm font-semibold hover:bg-forest/90 transition-all disabled:opacity-50"
+                    >
+                      {syncing ? '⏳ Syncing...' : '🔄 Sync Today\'s Data'}
+                    </button>
+                    <p className="text-xs text-gray-300 mt-2">This saves today's prices so trends can be tracked over time</p>
+                  </div>
+                </div>
+              )}
             </Card>
           )}
         </>
