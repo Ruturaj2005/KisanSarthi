@@ -1,4 +1,4 @@
-# 🌾 KisanSaathi — Farmer's Companion
+# 🌾 KisanSaathi - Farmer's Companion
 
 > AI-powered precision agriculture platform for India's 120M+ small and marginal farmers.
 
