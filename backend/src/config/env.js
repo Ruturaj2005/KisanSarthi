@@ -36,6 +36,8 @@ const envSchema = z.object({
   TWILIO_AUTH_TOKEN: z.string().default(''),
   TWILIO_PHONE: z.string().default('+14155238886'),
   WHATSAPP_ENABLED: z.coerce.boolean().default(false),
+
+  AGMARKNET: z.string().min(1, 'AGMARKNET API key is required').default('579b464db66ec23bdd000001cdd3946e44ce4aad7209ff7b23ac571b'),
 });
 
 let env;
@@ -77,6 +79,7 @@ try {
       TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN || '',
       TWILIO_PHONE: process.env.TWILIO_PHONE || '+14155238886',
       WHATSAPP_ENABLED: process.env.WHATSAPP_ENABLED === 'true',
+      AGMARKNET: process.env.AGMARKNET || '579b464db66ec23bdd000001cdd3946e44ce4aad7209ff7b23ac571b',
     };
   }
 }
